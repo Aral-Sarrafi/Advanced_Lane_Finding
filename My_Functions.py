@@ -274,8 +274,21 @@ def annotate_image(undist_image, binary_warped, Minv, left_fit, right_fit):
 
     # Warp the blank back to original image space using inverse perspective matrix (Minv)
     newwarp = cv2.warpPerspective(color_warp, Minv, (undist_image.shape[1], undist_image.shape[0])) 
+    
+    # Estimate the Lane curveture and offset
+    left_curverad, right_curverad = Lane_Curveture(binary_warped, left_fit, right_fit)
+    curv_rad = (left_curverad + right_curverad)/2.0
+    
+    center_dist = center_offset(binary_warped, left_fit, right_fit)
+    
+    # Caption the image
+    captioned_image = draw_data(undist_image, curv_rad, center_dist)
+    
     # Combine the result with the original image
-    result = cv2.addWeighted(undist_image, 1, newwarp, 0.4, 0)
+    result = cv2.addWeighted(captioned_image, 1, newwarp, 0.4, 0)
+    
+    
+    
     
     return result
 
@@ -446,23 +459,70 @@ def Frame_Lane_detection(binary_warped, left_fit , right_fit):
 # In[ ]:
 
 
-def Lane_Curveture(leftx, lefty, rightx, righty):
+def Lane_Curveture(binary_warped, left_fit, right_fit):
+    
+    ploty = np.linspace(0, binary_warped.shape[0]-1, binary_warped.shape[0] )
+    left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
+    right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
     
     # Define conversions in x and y from pixels space to meters
-    ym_per_pix = 30/720 # meters per pixel in y dimension
+    ym_per_pix = 30.0/720 # meters per pixel in y dimension
     xm_per_pix = 3.7/700 # meters per pixel in x dimension
+    3.048/100
     
-    ploty = np.linspace(0, 719, num=720)# to cover same y-range as image
     y_eval = np.max(ploty)
 
 
     # Fit new polynomials to x,y in world space
-    left_fit_cr = np.polyfit(lefty*ym_per_pix, leftx*xm_per_pix, 2)
-    right_fit_cr = np.polyfit(righty*ym_per_pix, rightx*xm_per_pix, 2)
+    left_fit_cr = np.polyfit(ploty*ym_per_pix, left_fitx*xm_per_pix, 2)
+    right_fit_cr = np.polyfit(ploty*ym_per_pix, right_fitx*xm_per_pix, 2)
     
     # Calculate the new radii of curvature
     left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
     right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
-
+    
+    
     return left_curverad, right_curverad
+
+
+# In[ ]:
+
+
+def center_offset(binary_warped, left_fit, right_fit):
+    
+    # Find the location of the base for left and right lanes
+    h = binary_warped.shape[0]
+    
+    left_base = left_fit[0]*h**2 + left_fit[1]*h + left_fit[2]
+    right_base = right_fit[0]*h**2 + right_fit[1]*h + right_fit[2]
+    
+    lane_center = (left_base + right_base)/2.0
+    
+    # The camera is mounted in the center
+    car_position = binary_warped.shape[1]/2.0
+    
+    xm_per_pix = 3.7/700 # meters per pixel in x dimension
+    offset = (car_position - lane_center)*xm_per_pix
+    
+    return offset
+
+
+# In[ ]:
+
+
+def draw_data(original_img, curv_rad, center_dist):
+    new_img = np.copy(original_img)
+    h = new_img.shape[0]
+    font = cv2.FONT_HERSHEY_DUPLEX
+    text = 'Curve radius: ' + '{:04.2f}'.format(curv_rad) + 'm'
+    cv2.putText(new_img, text, (40,70), font, 1.5, (200,255,155), 2, cv2.LINE_AA)
+    direction = ''
+    if center_dist > 0:
+        direction = 'right'
+    elif center_dist < 0:
+        direction = 'left'
+    abs_center_dist = abs(center_dist)
+    text = '{:04.3f}'.format(abs_center_dist) + 'm ' + direction + ' of center'
+    cv2.putText(new_img, text, (40,120), font, 1.5, (200,255,155), 2, cv2.LINE_AA)
+    return new_img
 
