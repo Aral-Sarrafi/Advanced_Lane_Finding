@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[9]:
 
 
 import numpy as np
@@ -11,44 +11,45 @@ import os
 import matplotlib.pyplot as plt
 
 
-# In[1]:
+# In[2]:
 
 
 def warp(img):
-    img_size = (img.shape[1], img.shape[0])
     
-    src = np.float32([[308, 658],
-                     [998, 658],
-                     [532, 500],
-                     [759,500]])
+    h = img.shape[0]
+    w = img.shape[1]
     
-    dst = np.float32(
-    [[308, 658],
-     [998, 658],
-     [325, 500],
-     [990, 500]])
+    src = np.float32([(575,464),
+                      (707,464), 
+                      (258,682), 
+                      (1049,682)])
+    dst = np.float32([(450,0),
+                      (w-450,0),
+                      (450,h),
+                      (w-450,h)])
     
     M = cv2.getPerspectiveTransform(src,dst)
     Minv = cv2.getPerspectiveTransform(dst,src)
-    warped = cv2.warpPerspective(img, M, img_size, flags = cv2.INTER_LINEAR)
+    warped = cv2.warpPerspective(img, M, (w,h), flags = cv2.INTER_LINEAR)
     
     return warped, Minv
 
 
-# In[446]:
+# In[10]:
 
 
-def HLS_threshold (img, thresh):
+def HLS_threshold (img, thresh = (0,255)):
     HLS_img = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
     
     S_channel = HLS_img[:,:,2]
+    Normalized_S_channel = (255.0*S_channel)/(np.max(S_channel))
     
     S_binary = np.zeros_like(S_channel)
-    S_binary[(S_channel >= thresh[0]) & (S_channel <= thresh[1])] = 1
+    S_binary[(Normalized_S_channel >= thresh[0]) & (Normalized_S_channel <= thresh[1])] = 1
     return S_binary
 
 
-# In[447]:
+# In[4]:
 
 
 def abs_sobel_thresh(img, orient = 'x', sobel_kernel = 3, thresh = (0, 255)):
@@ -67,7 +68,7 @@ def abs_sobel_thresh(img, orient = 'x', sobel_kernel = 3, thresh = (0, 255)):
     return grad_binary
 
 
-# In[448]:
+# In[5]:
 
 
 def mag_thresh(img, sobel_kernel = 3, thresh = (0, 255)):
@@ -86,7 +87,7 @@ def mag_thresh(img, sobel_kernel = 3, thresh = (0, 255)):
     return mag_binary
 
 
-# In[449]:
+# In[6]:
 
 
 def dir_thresh(img, sobel_kernel = 3, thresh = (-np.pi/2, np.pi/2)):
@@ -105,7 +106,7 @@ def dir_thresh(img, sobel_kernel = 3, thresh = (-np.pi/2, np.pi/2)):
     return dir_binary
 
 
-# In[450]:
+# In[7]:
 
 
 def grad_thresh(img, thresh_x, thresh_y, thresh_m, thresh_d):
@@ -122,7 +123,7 @@ def grad_thresh(img, thresh_x, thresh_y, thresh_m, thresh_d):
     return combined_binary
 
 
-# In[451]:
+# In[8]:
 
 
 def combine_thresholds(binary_1, binary_2):
@@ -133,25 +134,41 @@ def combine_thresholds(binary_1, binary_2):
     return final_binary
 
 
-# In[452]:
+# In[ ]:
+
+
+def region_mask(binary_warped):
+    grid = np.indices(binary_warped.shape)
+    cols = grid[1]
+    mask = np.zeros_like(cols)
+    mask[(cols<950) & (cols>400)] = 1
+    
+    binary_warped[mask!=1] = 0
+    
+    return binary_warped
+
+
+# In[ ]:
 
 
 def Generate_Binary_Warped(img, mtx, dist):
     
     undist_image = cv2.undistort(img, mtx, dist, None, mtx)
     
-    Color_binary = HLS_threshold(undist_image, (210, 255))
-    Grad_binary = grad_thresh(undist_image, (30, 255), (200, 255), (60, 255), (0.35, 1.57))
+    Color_binary = HLS_threshold(undist_image, (160, 255))
+    Grad_binary = grad_thresh(undist_image, (25, 255), (200, 255), (60, 255), (0.35, 1.57))
     
     combined_binary = combine_thresholds(Color_binary, Grad_binary)
     
     binary_warped, Minv = warp(combined_binary)
+    
+    binary_warped = region_mask(binary_warped)
   
     
     return binary_warped, Minv, undist_image
 
 
-# In[454]:
+# In[ ]:
 
 
 def Image_Lane_detection(binary_warped):
@@ -167,7 +184,7 @@ def Image_Lane_detection(binary_warped):
     rightx_base = np.argmax(histogram[midpoint:]) + midpoint
 
     # Choose the number of sliding windows
-    nwindows = 9
+    nwindows = 10
     # Set height of windows
     window_height = np.int(binary_warped.shape[0]//nwindows)
     # Identify the x and y positions of all nonzero pixels in the image
@@ -178,9 +195,9 @@ def Image_Lane_detection(binary_warped):
     leftx_current = leftx_base
     rightx_current = rightx_base
     # Set the width of the windows +/- margin
-    margin = 100
+    margin = 80
     # Set minimum number of pixels found to recenter window
-    minpix = 50
+    minpix = 40
     # Create empty lists to receive left and right lane pixel indices
     left_lane_inds = []
     right_lane_inds = []
@@ -227,10 +244,10 @@ def Image_Lane_detection(binary_warped):
     left_fit = np.polyfit(lefty, leftx, 2)
     right_fit = np.polyfit(righty, rightx, 2)
     
-    return left_fit, right_fit, leftx, lefty, rightx, righty
+    return left_fit, right_fit, leftx, lefty, rightx, righty, left_lane_inds,right_lane_inds
 
 
-# In[3]:
+# In[ ]:
 
 
 def annotate_image(undist_image, binary_warped, Minv, left_fit, right_fit):
@@ -242,6 +259,8 @@ def annotate_image(undist_image, binary_warped, Minv, left_fit, right_fit):
     # Create an image to draw the lines on
     warp_zero = np.zeros_like(binary_warped).astype(np.uint8)
     color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+    
+
 
     # Recast the x and y points into usable format for cv2.fillPoly()
     pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
@@ -250,34 +269,90 @@ def annotate_image(undist_image, binary_warped, Minv, left_fit, right_fit):
 
     # Draw the lane onto the warped blank image
     cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
+    cv2.polylines(color_warp, np.int32([pts_left]), isClosed=False, color=(255,0,255), thickness=15)
+    cv2.polylines(color_warp, np.int32([pts_right]), isClosed=False, color=(0,255,255), thickness=15)
 
     # Warp the blank back to original image space using inverse perspective matrix (Minv)
     newwarp = cv2.warpPerspective(color_warp, Minv, (undist_image.shape[1], undist_image.shape[0])) 
     # Combine the result with the original image
-    result = cv2.addWeighted(undist_image, 1, newwarp, 0.3, 0)
+    result = cv2.addWeighted(undist_image, 1, newwarp, 0.4, 0)
     
     return result
 
 
-# In[4]:
+# In[ ]:
 
 
 def IMAGE_PROCESS(img, mtx, dist):
     
     binary_warped, Minv, undist_image = Generate_Binary_Warped(img, mtx, dist)
     
-    left_fit, right_fit, leftx, lefty, rightx, righty = Image_Lane_detection(binary_warped)
+    left_fit, right_fit, leftx, lefty, rightx, righty, left_lane_inds,right_lane_inds = Image_Lane_detection(binary_warped)
     
     output = annotate_image(undist_image, binary_warped, Minv, left_fit, right_fit)
     
-    return output, left_fit, right_fit  
+    return output, left_fit, right_fit, left_lane_inds, right_lane_inds
+
+
+# In[11]:
+
+
+# Define a class to receive the characteristics of each line detection
+class Line():
+    def __init__(self):
+        # was the line detected in the last iteration?
+        self.detected = False  
+        # x values of the last n fits of the line
+        self.recent_xfitted = [] 
+        #average x values of the fitted line over the last n iterations
+        self.bestx = None     
+        #polynomial coefficients averaged over the last n iterations
+        self.best_fit = None  
+        #polynomial coefficients for the most recent fit
+        self.current_fit = []  
+        #radius of curvature of the line in some units
+        self.radius_of_curvature = None 
+        #distance in meters of vehicle center from the line
+        self.line_base_pos = None 
+        #difference in fit coefficients between last and new fits
+        self.diffs = np.array([0,0,0], dtype='float') 
+        #number of detected pixels
+        self.px_count = None
+        
+        # Method to keep track of the lane
+    def add_fit(self, fit, inds):
+        # add a found fit to the line, up to n
+        if fit is not None:
+            if self.best_fit is not None:
+                # if we have a best fit, see how this new fit compares
+                self.diffs = abs(fit-self.best_fit)
+            if (self.diffs[0] > 0.0005 or                self.diffs[1] > 0.5 or                self.diffs[2] > 50.) and                len(self.current_fit) > 0:
+                # bad fit!
+                self.detected = False
+            else:
+                self.detected = True
+                self.px_count = np.count_nonzero(inds)
+                self.current_fit.append(fit)
+                if len(self.current_fit) > 7:
+                    # throw out old fits, keep newest n
+                    self.current_fit = self.current_fit[len(self.current_fit)-7:]
+                self.best_fit = np.average(self.current_fit, axis=0)
+        # or remove one from the history, if not found
+        else:
+            self.detected = False
+            if len(self.current_fit) > 0:
+                # throw out oldest fit
+                self.current_fit = self.current_fit[:len(self.current_fit)-1]
+            if len(self.current_fit) > 0:
+                # if there are still any fits in the queue, best_fit is their average
+                self.best_fit = np.average(self.current_fit, axis=0)
 
 
 # In[ ]:
 
 
 def VIDEO_PROCESS(cap, mtx, dist, Video_name):
-    counter = 0
+
     
     # Video infomration    
     fps = int(cap.get(cv2.CAP_PROP_FPS))
@@ -288,26 +363,44 @@ def VIDEO_PROCESS(cap, mtx, dist, Video_name):
     # output video spec
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(Video_name, fourcc, fps,(frameWidth,frameHight))
+    
+    # Left and Right Lane classes
+    left_fit = None
+    right_fit = None
+    Right_Lane = Line()
+    Left_Lane = Line()
 
-    for i in range(50):
+    for i in range(frameCount):
         
         ret, img = cap.read()
         
         if ret == True:
-            if counter == 0:
+            if i == 0:
 
-                annotated_img, left_fit, right_fit = IMAGE_PROCESS(img, mtx, dist)
-                annotated_img = cv2.cvtColor(annotated_img, cv2.COLOR_BGR2RGB)
-                out.write(annotated_img)
+                output, left_fit, right_fit, left_lane_inds, right_lane_inds = IMAGE_PROCESS(img, mtx, dist)
+                
+                Left_Lane.add_fit(left_fit, left_lane_inds)
+                Right_Lane.add_fit(right_fit, right_lane_inds)
+                
+                out.write(output)
+
 
             else:
 
                 binary_warped, Minv, undist_image = Generate_Binary_Warped(img, mtx, dist)
 
-                left_fit, right_fit, leftx, lefty, rightx, righty = Frame_Lane_detection(binary_warped, left_fit , right_fit)
+                left_fit, right_fit, leftx, lefty, rightx, righty, left_lane_inds, right_lane_inds = Frame_Lane_detection(binary_warped, left_fit , right_fit)
+                
+                Left_Lane.add_fit(left_fit, left_lane_inds)
+                Right_Lane.add_fit(right_fit, right_lane_inds)
+                
+                left_fit = Left_Lane.best_fit
+                right_fit = Right_Lane.best_fit
+                
 
-                annotated_img = annotate_image(undist_image, binary_warped, Minv, left_fit, right_fit)
-                annotated_img = cv2.cvtColor(annotated_img, cv2.COLOR_BGR2RGB)
+                output = annotate_image(undist_image, binary_warped, Minv, left_fit, right_fit)
+                out.write(output)
+                
         else:
             break
     cap.release()
@@ -315,7 +408,7 @@ def VIDEO_PROCESS(cap, mtx, dist, Video_name):
     cv2.destroyAllWindows()
 
 
-# In[458]:
+# In[ ]:
 
 
 def Frame_Lane_detection(binary_warped, left_fit , right_fit):
@@ -325,7 +418,7 @@ def Frame_Lane_detection(binary_warped, left_fit , right_fit):
     nonzero = binary_warped.nonzero()
     nonzeroy = np.array(nonzero[0])
     nonzerox = np.array(nonzero[1])
-    margin = 100
+    margin = 80
     left_lane_inds = ((nonzerox > (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + 
     left_fit[2] - margin)) & (nonzerox < (left_fit[0]*(nonzeroy**2) + 
     left_fit[1]*nonzeroy + left_fit[2] + margin))) 
@@ -347,10 +440,10 @@ def Frame_Lane_detection(binary_warped, left_fit , right_fit):
     left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
     right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2] 
     
-    return left_fit, right_fit, leftx, lefty, rightx, righty
+    return left_fit, right_fit, leftx, lefty, rightx, righty, left_lane_inds, right_lane_inds
 
 
-# In[461]:
+# In[ ]:
 
 
 def Lane_Curveture(leftx, lefty, rightx, righty):
