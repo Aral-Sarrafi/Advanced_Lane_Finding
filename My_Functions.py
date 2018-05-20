@@ -4,6 +4,7 @@
 # In[9]:
 
 
+# Importing the required libraries
 import numpy as np
 import cv2
 import math
@@ -14,6 +15,7 @@ import matplotlib.pyplot as plt
 # In[2]:
 
 
+# This function generates the Bird's-Eye View image
 def warp(img):
     
     h = img.shape[0]
@@ -38,6 +40,7 @@ def warp(img):
 # In[10]:
 
 
+# HLS color space threshold
 def HLS_threshold (img, thresh = (0,255)):
     HLS_img = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
     
@@ -52,6 +55,7 @@ def HLS_threshold (img, thresh = (0,255)):
 # In[4]:
 
 
+# Applies a threshold on the gradient image on x or y direction
 def abs_sobel_thresh(img, orient = 'x', sobel_kernel = 3, thresh = (0, 255)):
     
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -71,6 +75,7 @@ def abs_sobel_thresh(img, orient = 'x', sobel_kernel = 3, thresh = (0, 255)):
 # In[5]:
 
 
+# Applies a threshold on the gradient magnitude
 def mag_thresh(img, sobel_kernel = 3, thresh = (0, 255)):
     
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -90,6 +95,7 @@ def mag_thresh(img, sobel_kernel = 3, thresh = (0, 255)):
 # In[6]:
 
 
+# Applies a threshold on the gradient direction
 def dir_thresh(img, sobel_kernel = 3, thresh = (-np.pi/2, np.pi/2)):
     
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -109,6 +115,7 @@ def dir_thresh(img, sobel_kernel = 3, thresh = (-np.pi/2, np.pi/2)):
 # In[7]:
 
 
+# Combines the different gradient thresholds
 def grad_thresh(img, thresh_x, thresh_y, thresh_m, thresh_d):
     
     gradx = abs_sobel_thresh(img, orient = 'x', sobel_kernel = 3, thresh = thresh_x)
@@ -126,6 +133,7 @@ def grad_thresh(img, thresh_x, thresh_y, thresh_m, thresh_d):
 # In[8]:
 
 
+# Combines the gradient threshold and the color space threshold to form the binary_image
 def combine_thresholds(binary_1, binary_2):
     final_binary = np.zeros_like(binary_1)
     
@@ -137,6 +145,7 @@ def combine_thresholds(binary_1, binary_2):
 # In[ ]:
 
 
+# Masks some of the unwanted region of the binary image
 def region_mask(binary_warped):
     grid = np.indices(binary_warped.shape)
     cols = grid[1]
@@ -151,6 +160,7 @@ def region_mask(binary_warped):
 # In[ ]:
 
 
+# Transforms an image to the binary_wraped image which plays a major role in lane detection.
 def Generate_Binary_Warped(img, mtx, dist):
     
     undist_image = cv2.undistort(img, mtx, dist, None, mtx)
@@ -171,6 +181,7 @@ def Generate_Binary_Warped(img, mtx, dist):
 # In[ ]:
 
 
+# Detects the lane line on the binary_warped image
 def Image_Lane_detection(binary_warped):
     # Assuming you have created a warped binary image called "binary_warped"
     # Take a histogram of the bottom half of the image
@@ -250,6 +261,7 @@ def Image_Lane_detection(binary_warped):
 # In[ ]:
 
 
+# Generates the final annotated image
 def annotate_image(undist_image, binary_warped, Minv, left_fit, right_fit):
 
     ploty = np.linspace(0, binary_warped.shape[0]-1, binary_warped.shape[0] )
@@ -296,6 +308,7 @@ def annotate_image(undist_image, binary_warped, Minv, left_fit, right_fit):
 # In[ ]:
 
 
+# THE FINAL PIPELINE TO DETECT THE LINES IN THE IMAGE
 def IMAGE_PROCESS(img, mtx, dist):
     
     binary_warped, Minv, undist_image = Generate_Binary_Warped(img, mtx, dist)
@@ -310,7 +323,7 @@ def IMAGE_PROCESS(img, mtx, dist):
 # In[11]:
 
 
-# Define a class to receive the characteristics of each line detection
+# KEEPING TRACK OF THE LANE LINES FROM PREVIOUS FRAMES FOR AVERAGING AND OUTLIER DETECTION
 class Line():
     def __init__(self):
         # was the line detected in the last iteration?
@@ -364,6 +377,43 @@ class Line():
 # In[ ]:
 
 
+# USES THE PREVIOUS DETECTED LINES TO NARROW DOWN THE SEARCH AREA FOR THE LANE PIXELS IN THE VIDEO
+def Frame_Lane_detection(binary_warped, left_fit , right_fit):
+    # Assume you now have a new warped binary image 
+    # from the next frame of video (also called "binary_warped")
+    # It's now much easier to find line pixels!
+    nonzero = binary_warped.nonzero()
+    nonzeroy = np.array(nonzero[0])
+    nonzerox = np.array(nonzero[1])
+    margin = 80
+    left_lane_inds = ((nonzerox > (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + 
+    left_fit[2] - margin)) & (nonzerox < (left_fit[0]*(nonzeroy**2) + 
+    left_fit[1]*nonzeroy + left_fit[2] + margin))) 
+
+    right_lane_inds = ((nonzerox > (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + 
+    right_fit[2] - margin)) & (nonzerox < (right_fit[0]*(nonzeroy**2) + 
+    right_fit[1]*nonzeroy + right_fit[2] + margin)))  
+
+    # Again, extract left and right line pixel positions
+    leftx = nonzerox[left_lane_inds]
+    lefty = nonzeroy[left_lane_inds] 
+    rightx = nonzerox[right_lane_inds]
+    righty = nonzeroy[right_lane_inds]
+    # Fit a second order polynomial to each
+    left_fit = np.polyfit(lefty, leftx, 2)
+    right_fit = np.polyfit(righty, rightx, 2)
+    # Generate x and y values for plotting
+    ploty = np.linspace(0, binary_warped.shape[0]-1, binary_warped.shape[0] )
+    left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
+    right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2] 
+    
+    return left_fit, right_fit, leftx, lefty, rightx, righty, left_lane_inds, right_lane_inds
+
+
+# In[ ]:
+
+
+# FINAL PIPELINE FOR LANE DETECTION IN VIDEO STREAM
 def VIDEO_PROCESS(cap, mtx, dist, Video_name):
 
     
@@ -424,41 +474,7 @@ def VIDEO_PROCESS(cap, mtx, dist, Video_name):
 # In[ ]:
 
 
-def Frame_Lane_detection(binary_warped, left_fit , right_fit):
-    # Assume you now have a new warped binary image 
-    # from the next frame of video (also called "binary_warped")
-    # It's now much easier to find line pixels!
-    nonzero = binary_warped.nonzero()
-    nonzeroy = np.array(nonzero[0])
-    nonzerox = np.array(nonzero[1])
-    margin = 80
-    left_lane_inds = ((nonzerox > (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + 
-    left_fit[2] - margin)) & (nonzerox < (left_fit[0]*(nonzeroy**2) + 
-    left_fit[1]*nonzeroy + left_fit[2] + margin))) 
-
-    right_lane_inds = ((nonzerox > (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + 
-    right_fit[2] - margin)) & (nonzerox < (right_fit[0]*(nonzeroy**2) + 
-    right_fit[1]*nonzeroy + right_fit[2] + margin)))  
-
-    # Again, extract left and right line pixel positions
-    leftx = nonzerox[left_lane_inds]
-    lefty = nonzeroy[left_lane_inds] 
-    rightx = nonzerox[right_lane_inds]
-    righty = nonzeroy[right_lane_inds]
-    # Fit a second order polynomial to each
-    left_fit = np.polyfit(lefty, leftx, 2)
-    right_fit = np.polyfit(righty, rightx, 2)
-    # Generate x and y values for plotting
-    ploty = np.linspace(0, binary_warped.shape[0]-1, binary_warped.shape[0] )
-    left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
-    right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2] 
-    
-    return left_fit, right_fit, leftx, lefty, rightx, righty, left_lane_inds, right_lane_inds
-
-
-# In[ ]:
-
-
+# ESTIMATES THE LANE CURVETURE
 def Lane_Curveture(binary_warped, left_fit, right_fit):
     
     ploty = np.linspace(0, binary_warped.shape[0]-1, binary_warped.shape[0] )
@@ -488,6 +504,7 @@ def Lane_Curveture(binary_warped, left_fit, right_fit):
 # In[ ]:
 
 
+# ESTIMATES THE 
 def center_offset(binary_warped, left_fit, right_fit):
     
     # Find the location of the base for left and right lanes
@@ -510,6 +527,7 @@ def center_offset(binary_warped, left_fit, right_fit):
 # In[ ]:
 
 
+# ADDS THE LANE CURVETURE AND OFFSET AS TEXT TO THE IMAGE
 def draw_data(original_img, curv_rad, center_dist):
     new_img = np.copy(original_img)
     h = new_img.shape[0]
