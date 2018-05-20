@@ -90,3 +90,13 @@ I have encapsulated all of the previous steps and stages in a function named **I
 
 
 # 8. Lane Detection in a Video Stream
+
+In the previous sections the lane detection pipeline for individual images were dicussed. The lane detection in a video stream is basically the same with some slight additions which are pointed out here.
+
+1- A video stream is a sequence of images therefore the lane detection on images can be applied to each of the frames.
+2- In detecting the lane lines in video stream the searching window for the location of the lane pixels can be rescricted based on the previous detected lane line, which can  increase the speed and accuracy of the pipeline.
+3- The detected lane line can be averaged over couple of frames inorder to achieve a better and more stable pipeline. Moreover, the fits for lane line can be rejected by comraring to the previous detection, this can be very useful for frame that the lane detection is not performing well (Bad frames).
+
+All the above mentioned criteras are implemented in the function named **VIDEO_PROCESS** in My_Functions.py file.
+
+The result of my lane detection pipeline on video stream is in the link ().
