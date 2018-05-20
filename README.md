@@ -78,6 +78,8 @@ Once the binary_warped image is formed the left and right lane should be disting
 
 3- After detecting the pixels that are corresponding to the left and right lanes a second order polynomial is fit to the pixels.
 
+4- The curvature of the detected second order polynomial is estimated using the function **Lane_Curveture**. Moreover, the deviation of the car from the center of the road is measured with the function **center_offset**.
+
 These steps are implemented in the **Image_Lane_detection**. This function gets the binary_warped image as the input and fit the second order polynomial to the lane lines. Figure Below shows the output of this function.
 
 <img src = "./output_images/detected_lanes.jpg" width = "500">
