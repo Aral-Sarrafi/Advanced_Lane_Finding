@@ -54,4 +54,4 @@ I applied the threshold to all four gardient images and then combined them to ge
 
 The binary image obtained from the graident threshold can be combined with the binary image from the color space threshold to get a more robust pipeline. The resulting final binary image is shown as below, as it is clear the binary images are combined with an **or** operation.
 
-<img src = "./output_images/gradient_thr.jpg" width = "500">
+<img src = "./output_images/combined_thr.jpg" width = "500">
