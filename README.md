@@ -89,14 +89,30 @@ I have encapsulated all of the previous steps and stages in a function named **I
 <img src = "./output_images/Test_images_annotated.jpg" width = "700">
 
 
-# 8. Lane Detection in a Video Stream
+## 8. Lane Detection in a Video Stream
 
 In the previous sections the lane detection pipeline for individual images were dicussed. The lane detection in a video stream is basically the same with some slight additions which are pointed out here.
 
 1- A video stream is a sequence of images therefore the lane detection on images can be applied to each of the frames.
+
 2- In detecting the lane lines in video stream the searching window for the location of the lane pixels can be rescricted based on the previous detected lane line, which can  increase the speed and accuracy of the pipeline.
+
 3- The detected lane line can be averaged over couple of frames inorder to achieve a better and more stable pipeline. Moreover, the fits for lane line can be rejected by comraring to the previous detection, this can be very useful for frame that the lane detection is not performing well (Bad frames).
 
 All the above mentioned criteras are implemented in the function named **VIDEO_PROCESS** in My_Functions.py file.
 
 The result of my lane detection pipeline on video stream is in the [Video Link](./My_Video.avi).
+
+## Discussion:
+
+In this section I will be pointing out some the most important challenges for designing a robust lane detection pipeline.
+
+1- The threshold value should be selected carefully and it requires several trial and errors to find the suitable values. Having a more dynamic thresholding approach can defenitly improve the performance.
+
+2- The lane detection on some the frames of the video is hard. Therefore, rejecting the bad detection is very essential for the pipeline to perform well.
+
+3- Smoothing the lane lines over the last couple of frames was also very helpful to improve the pipeline.
+
+4- Shadows were often the most challenging effect on the images. Combining several color space thresholds seems to be a good option to overcome this challegne, which I will be considering to implement in future.
+
+
