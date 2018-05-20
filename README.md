@@ -55,3 +55,24 @@ I applied the threshold to all four gardient images and then combined them to ge
 The binary image obtained from the graident threshold can be combined with the binary image from the color space threshold to get a more robust pipeline. The resulting final binary image is shown as below, as it is clear the binary images are combined with an **or** operation.
 
 <img src = "./output_images/combined_thr.jpg" width = "500">
+
+## 6. Bird's-eye View
+
+Normally the camera will be placed in front of the car. However, having a bird eye view from the top is much more helpful for detecting lane lines. The bird's eye view can be obtained by applying a prespective transformation to the original images from the camera.
+
+In order to find the desired prespective transformation four points on a trapazoid will be selected as the source points. These four points will form a rectangle in the bird eye view which will be considered as the destinations points. This operation is encapsulated in the function **warp** in the My_Functions.py file. This function get the undistorted image as its input and provides the bird eye view of the image along with the inverse transfomration matrix which is essential in the next stages of the pipeline. Figure below shows the formation of the bird's eye view along with the source and destination points.
+
+<img src = "./output_images/Bird_Eye.jpg" width = "700">
+
+## 7. Lane Detection in a single image
+
+At this point the binary image is available from the color space and gradient thresholding. This binary image can be projected to the bird's eye view which will be called the **binary_wraped** image. The figure below shows an example of the **binary_wraped** for one of the test images.
+
+<img src = "./output_images/binary_waped.jpg" width = "500">
+
+<img src = "./output_images/detected_lanes.jpg" width = "500">
+
+<img src = "./output_images/Test_images_annotated.jpg" width = "700">
+
+
+# 8. Lane Detection in a Video Stream
