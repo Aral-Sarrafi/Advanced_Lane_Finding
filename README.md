@@ -99,4 +99,4 @@ In the previous sections the lane detection pipeline for individual images were 
 
 All the above mentioned criteras are implemented in the function named **VIDEO_PROCESS** in My_Functions.py file.
 
-The result of my lane detection pipeline on video stream is in the link ().
+The result of my lane detection pipeline on video stream is in the [Video Link](./My_video.avi).
