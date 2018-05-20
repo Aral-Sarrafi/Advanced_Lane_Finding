@@ -38,4 +38,20 @@ After calibrating the camera and correcting the distorsions in the original imag
 
 I will be using the S channel to apply the threshold, and obtain the binay image. Figure below shows the result after applying a threshold to the S channel.
 
-<img src = "./output_images/threshold_S.jpg" width = "700">
+<img src = "./output_images/threshold_S.jpg" width = "500">
+
+## 4. Gradient Threshold
+
+Other than color threshold the gradient of the image can also provide useful infomration regarding the pixels associated with the lane lines. Figure below shows gradient of the gray scale image in x and y direction along with the gradient magnitude and it's direction.
+
+<img src = "./output_images/gradient.jpg" width = "700">
+
+I applied the threshold to all four gardient images and then combined them to get a final binary image. This has been implemented in the function **grad_thresh** in the My_Functions.py file. The threshold value are selected by trial and error. The final binary image obtained from applying threshold to gradient image is as below:
+
+<img src = "./output_images/gradient_thr.jpg" width = "500">
+
+## 5. Combining the Color and Gradient Threshold
+
+The binary image obtained from the graident threshold can be combined with the binary image from the color space threshold to get a more robust pipeline. The resulting final binary image is shown as below, as it is clear the binary images are combined with an **or** operation.
+
+<img src = "./output_images/gradient_thr.jpg" width = "500">
