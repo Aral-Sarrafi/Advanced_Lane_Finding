@@ -70,7 +70,21 @@ At this point the binary image is available from the color space and gradient th
 
 <img src = "./output_images/binary_waped.jpg" width = "500">
 
+Once the binary_warped image is formed the left and right lane should be distinguished first. This process has been expalained in the lane detection lessons throughly;therefor, I will be just pointing them out.
+
+1- The histogram of the pixels for the lower half of the image is formed and the location of the left and right lane can be estimated based on the location of the peaks in the histogram.
+
+2- The histogram can provide a rogh estimation of the location of the lanes as a starting point. For a better estimation I used the sliding window method from the lessons to obtain a better estimation of the pixels that are corresponding to the lane lines.
+
+3- After detecting the pixels that are corresponding to the left and right lanes a second order polynomial is fit to the pixels.
+
+These steps are implemented in the **Image_Lane_detection**. This function gets the binary_warped image as the input and fit the second order polynomial to the lane lines. Figure Below shows the output of this function.
+
 <img src = "./output_images/detected_lanes.jpg" width = "500">
+Once the left and right lanes are detected on the bird eye view the lines can be transformed back to the original image. As shown below.
+
+**IMAGE_PROCESS function:**
+I have encapsulated all of the previous steps and stages in a function named **IMAGE_PROCESS**. This function takes an RGB image as the input an gives back the annotated image where the lane lines are detected. Figure below shows the final output of lane detection and image captioning for all the test images. As it is clear the lane detection pipeline is performing reasonbly well on the test images.
 
 <img src = "./output_images/Test_images_annotated.jpg" width = "700">
 
