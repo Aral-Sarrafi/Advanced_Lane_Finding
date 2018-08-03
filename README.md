@@ -1,5 +1,7 @@
 [image1]: ./output_images/calibration.jpg
 # Advanced Lane Finding
+<img src = "Lane_detection.gif" width = "400" hight = "400">
+
 With in this project some of the more advanced topics from the computer vision context is used to detect the lane lines in a video stream. The outline of the project is as follows:
 
 ### 1. Camera Calibration
